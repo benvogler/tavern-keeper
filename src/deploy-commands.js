@@ -1,4 +1,4 @@
-import { token, clientId, guildId } from './config.mjs';
+import { token, clientId, guildId } from './config.js';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import { ApplicationCommandOptionType } from 'discord-api-types/v9';
@@ -8,9 +8,21 @@ const commands = [{
     description: 'Creates roles and channels for a new campaign!',
     options: [
         {
+            type: ApplicationCommandOptionType.User,
+            name: 'dm',
+            description: 'The User who is the DM of the campaign.',
+            required: true
+        },
+        {
             type: ApplicationCommandOptionType.String,
-            name: 'name',
-            description: 'The name of the campaign. This will be used to create role and channel names.',
+            name: 'title',
+            description: 'The long form title of the campaign. Used for the section name.',
+            required: true
+        },
+        {
+            type: ApplicationCommandOptionType.String,
+            name: 'label',
+            description: 'The short label of the campaign, preferably one or two words. Used to create role and channel names.',
             required: true
         },
         {
