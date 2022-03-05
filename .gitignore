@@ -1,4 +1,2 @@
 config.json
 node_modules
-# Serverless directories
-.serverless
