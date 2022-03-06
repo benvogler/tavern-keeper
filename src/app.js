@@ -1,8 +1,9 @@
 import { Client, Intents } from 'discord.js';
 import { token, developerContactId } from './config.js';
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
+import { countcampaigns } from './commands/countcampaigns.js';
 
-const client = new Client({intents: [Intents.FLAGS.GUILDS]});
+const client = new Client({intents: new Intents().add([Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS])});
 
 client.once('ready', () => {
     console.log('Bot started successfully');
@@ -11,7 +12,7 @@ client.once('ready', () => {
 client.login(token);
 
 const commands = {
-    createcampaign
+    createcampaign, countcampaigns
 };
 
 const buttons = {
