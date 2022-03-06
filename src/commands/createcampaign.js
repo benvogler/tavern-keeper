@@ -1,6 +1,6 @@
 import { ChannelType, OverwriteType } from 'discord-api-types/v9';
 import { MessageActionRow, MessageButton } from 'discord.js';
-import { channels } from '../config.js';
+import { channels, roleEmojiName } from '../config.js';
 import { findOrCreateChannel, findOrCreateRole, getOptionsFromCommand, getOptionsFromMessage, normalizePermissionOverwrites, overwritePermissionsProgressively } from '../utils.js';
 
 export async function createcampaign(interaction) {
@@ -33,9 +33,12 @@ export async function confirmcreatecampaign(interaction) {
 
     interaction.deferReply({ephemeral: true});
 
+    const roleEmoji = guild.emojis.cache.find(emoji => emoji.name === roleEmojiName);
+
     const campaignRole = await findOrCreateRole(guild, {
         name: label,
-        color
+        color,
+        icon: roleEmoji
     });
 
     const dmRole = await findOrCreateRole(guild, {
