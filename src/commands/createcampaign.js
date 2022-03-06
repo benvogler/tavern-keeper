@@ -1,31 +1,11 @@
 import { ChannelType, OverwriteType } from 'discord-api-types/v9';
-import { MessageActionRow, MessageButton, Permissions } from 'discord.js';
-import { channelNames } from '../config.js';
-
-function getOptions(interaction) {
-    const dm = interaction.options.getMember('dm');
-    const title = interaction.options.getString('title');
-    const label = interaction.options.getString('label');
-    const transformedLabel = transformLabel(label);
-    let color = interaction.options.getString('color');
-    if (!color.startsWith('#')) {
-        color = '#' + color;
-    }
-    if (!/^#[0-9A-Fa-f]{6}$/i.test(color)) {
-        color = '#FFFFFF';
-    }
-    return { dm, title, label, transformedLabel, color };
-}
-
-function transformLabel(label) {
-    return label.toLowerCase().replace(/\ /g, '-');
-}
+import { MessageActionRow, MessageButton } from 'discord.js';
+import { channels } from '../config.js';
+import { findOrCreateChannel, findOrCreateRole, getOptionsFromCommand, getOptionsFromMessage, normalizePermissionOverwrites, overwritePermissionsProgressively } from '../utils.js';
 
 export async function createcampaign(interaction) {
 
-    const { dm, title, label, transformedLabel, color } = getOptions(interaction);
-    
-    console.log('options?', {dm, title, label, color});
+    const { dm, title, label, transformedLabel, color } = getOptionsFromCommand(interaction);
 
     console.log(`Creating a campaign titled ${title} with the label "${label}" for DM ${dm} and with color ${color}`);
 
@@ -46,111 +26,104 @@ export async function createcampaign(interaction) {
 
 export async function confirmcreatecampaign(interaction) {
 
+    const channelDefinitions = JSON.parse(JSON.stringify(channels));
+
     const { guild } = interaction;
-    
-    const split = interaction.message.content.split('`');
-    const title = split[1];
-    const label = split[3].replace('@', '');
-    const transformedLabel = transformLabel(label);
-    const color = split[5];
-    const memberId = interaction.message.content.match(/<@[!]?([^>]+)>/)[1];
-    console.log('looking for member matching', memberId);
-    let dm = guild.members.cache.find(member => member.id === memberId);
-    if (!dm) {
-        dm = await guild.members.fetch(memberId);
-        console.log('fetched user', dm);
-    }
+    const { dm, title, label, transformedLabel, color } = await getOptionsFromMessage(interaction);
 
     interaction.deferReply({ephemeral: true});
 
-    let campaignRole = guild.roles.cache.find(role => role.name === label);
-    console.log('got campaignRole?', typeof campaignRole);
-    if (!campaignRole) {
-        campaignRole = await guild.roles.create({
-            name: label,
-            color,
-            // permissions: new Permissions()
-        });
-        console.log('created new campaignRole', typeof campaignRole);
+    const campaignRole = await findOrCreateRole(guild, {
+        name: label,
+        color
+    });
+
+    const dmRole = await findOrCreateRole(guild, {
+        name: 'DM',
+        color: '#ffffff'
+    });
+
+    if (dmRole && dm.roles) {
+        await dm.roles.add(dmRole);
+        await dm.roles.add(campaignRole);
+        console.log('assigned roles to dm');
     }
 
-    let dmRole = guild.roles.cache.find(role => role.name === 'DM');
-    console.log('got dmRole?', typeof dmRole);
-    if (!dmRole) {
-        dmRole = await guild.roles.create({
-            name: 'DM',
-            color: '#ffffff',
-            // permissions: new Permissions()
-        });
-        console.log('created new dmRole', typeof dmRole);
-    }
+    const annexRole = await findOrCreateRole(guild, {
+        name: 'Guild Annex',
+        color: '#ffffff'
+    });
 
-    await dm.roles.add(dmRole);
-    await dm.roles.add(campaignRole);
-
-    console.log('assigned roles to dm');
-
-    let category = guild.channels.cache.find(channel => channel.name === title && channel.type === 'GUILD_CATEGORY');
-    console.log('got category?', typeof category);
-    if (!category) {
-        category = await guild.channels.create(title, {
-            type: ChannelType.GuildCategory,
-            permissionOverwrites: [
-                {
-                    id: guild.roles.everyone,
-                    type: OverwriteType.Role,
-                    deny: [Permissions.ALL]
-                }
-            ]
-        });
-        console.log('created new category', typeof category);
-    }
-
-    await category.permissionOverwrites.set([
-        {
-            id: guild.roles.everyone,
-            type: OverwriteType.Role,
-            deny: [Permissions.ALL]
+    const overwriteOptions = {
+        everyone: {
+            userOrRole: guild.roles.everyone,
+            type: OverwriteType.Role
         },
-        {
-            id: campaignRole.id,
-            type: OverwriteType.Role,
-            allow: [Permissions.DEFAULT]
+        players: {
+            userOrRole: campaignRole,
+            type: OverwriteType.Role
         },
-        {
-            id: dm.id,
-            type: OverwriteType.Member,
-            allow: [Permissions.ALL]
+        dm: {
+            userOrRole: dm,
+            type: OverwriteType.Member
+        },
+        staff: {
+            userOrRole: annexRole,
+            type: OverwriteType.Role
         }
-    ]);
+    }
+
+    const category = await findOrCreateChannel(guild, {
+        name: title,
+        type: ChannelType.GuildCategory
+    });
+
+    console.trace('why is this not being caught?');
+    await overwritePermissionsProgressively(
+        category,
+        normalizePermissionOverwrites(channelDefinitions.category.permissionOverwrites, overwriteOptions)
+    );
 
     console.log('updated category');
 
-    const channels = {};
-    for (let channel of channelNames.text) {
-        channels[[transformedLabel, channel].join('-')] = ChannelType.GuildText;
+    const flatDefinitions = [];
+    if (channelDefinitions.text) {
+        for (const channel of channelDefinitions.text) {
+            channel.name = [transformedLabel, channel.name].join('-');
+            channel.type = ChannelType.GuildText;
+        }
+        flatDefinitions.push(...channelDefinitions.text);
     }
-    for (let channel of channelNames.voice) {
-        channels[[label, channel].join(' ')] = ChannelType.GuildVoice;
+    if (channelDefinitions.voice) {
+        for (const channel of channelDefinitions.voice) {
+            channel.name = [label, channel.name].join(' ');
+            channel.type = ChannelType.GuildVoice;
+        }
+        flatDefinitions.push(...channelDefinitions.voice);
     }
 
-    for (const channelName in channels) {
-        let channel = guild.channels.cache.find(c => c.name === channelName);
-        console.log(`got channel "${channelName}"?`, typeof channel);
-        if (!channel) {
-            channel = await guild.channels.create(channelName, {
-                type: channels[channelName],
-                parent: category.id
-            });
-            console.log(`created new channel "${channelName}"`, typeof channel);
-        }
+    const createdChannels = [];
+    for (const channelDefinition of flatDefinitions) {
+        const permissions = channelDefinition.permissionOverwrites;
+        delete channelDefinition.permissionOverwrites;
+        const channel = await findOrCreateChannel(guild, {
+            ...channelDefinition,
+            parent: category.id
+        });
         await channel.lockPermissions();
         console.log('locked channel permissions');
-        channels[channelName] = channel;
+        if (permissions) {
+            await overwritePermissionsProgressively(
+                channel,
+                normalizePermissionOverwrites(permissions, overwriteOptions)
+            );
+            console.log('overwrote permissions');
+        }
+        createdChannels.push(channel);
     }
 
     interaction.editReply({
         ephemeral: true,
-        content: `:tada: Woot! A new campaign! Check out <#${channels[Object.keys(channels)[0]].id}>`
+        content: `:tada: Woot! A new campaign! Check out <#${createdChannels[0].id}>`
     });
 }
