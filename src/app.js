@@ -1,5 +1,5 @@
 import { Client, Intents } from 'discord.js';
-import { token, developerContactId } from './config.js';
+import { token, developerContactId, allowedRolesOrUsers } from './config.js';
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
 import { countcampaigns } from './commands/countcampaigns.js';
 
@@ -30,6 +30,14 @@ async function handleInteraction(interaction) {
             const { commandName } = interaction;
             if (!Object.keys(commands).includes(commandName)) {
                 return;
+            }
+            const roleIds = interaction.member.roles.cache.map(role => role.id);
+            if (!allowedRolesOrUsers.includes(interaction.member.id) &&
+                !allowedRolesOrUsers.some(item => roleIds.includes(item))) {
+                return await interaction.reply({
+                    ephemeral: true,
+                    content: `Sorry, you don't have access to do that.`
+                });
             }
             return await commands[commandName](interaction, client);
         }
