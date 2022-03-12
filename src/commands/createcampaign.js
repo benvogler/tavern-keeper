@@ -53,7 +53,7 @@ export async function confirmcreatecampaign(interaction) {
     }
 
     const annexRole = await findOrCreateRole(guild, {
-        name: 'Guild Annex',
+        name: 'Annex',
         color: '#ffffff'
     });
 
