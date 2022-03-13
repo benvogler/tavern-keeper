@@ -1,6 +1,6 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { token, publicKey, clientId, guildId, channels, developerContactId, roleEmojiName, allowedRolesOrUsers } = require('../config.json');
+const { token, publicKey, clientId, guildId, channels, roles, developerContactId, roleEmojiName, allowedRolesOrUsers } = require('../config.json');
 
 export {
     token,
@@ -8,6 +8,7 @@ export {
     clientId,
     guildId,
     channels,
+    roles,
     developerContactId,
     roleEmojiName,
     allowedRolesOrUsers
