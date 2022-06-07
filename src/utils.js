@@ -7,10 +7,10 @@ export function getOptionsFromCommand(interaction) {
     const label = interaction.options.getString('label');
     const transformedLabel = transformLabel(label);
     let color = interaction.options.getString('color');
-    if (!color.startsWith('#')) {
+    if (color && !color.startsWith('#')) {
         color = '#' + color;
     }
-    if (!/^#[0-9A-Fa-f]{6}$/i.test(color)) {
+    if (!color || !/^#[0-9A-Fa-f]{6}$/i.test(color)) {
         color = '#FFFFFF';
     }
     return { dm, title, label, transformedLabel, color };
