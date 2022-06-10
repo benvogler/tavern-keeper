@@ -30,12 +30,47 @@ const commands = [
                 type: ApplicationCommandOptionType.String,
                 name: 'color',
                 description: `The hex color code to use for the campaign's roles`
+            },
+            {
+                type: ApplicationCommandOptionType.String,
+                name: 'category',
+                description: `Optional name or id of an existing category to create this campaign under`
             }
         ]
     },
     {
-        name: 'countcampaigns',
-        description: 'Count the number of campaigns and unique players across them'
+        name: 'createoneshot',
+        description: 'Creates a channel for a new one-shot!',
+        options: [
+            {
+                type: ApplicationCommandOptionType.User,
+                name: 'dm',
+                description: 'The User who is the DM of the campaign.',
+                required: true
+            },
+            {
+                type: ApplicationCommandOptionType.String,
+                name: 'title',
+                description: 'The long form title of the campaign. Used for the section name.',
+                required: true
+            },
+            {
+                type: ApplicationCommandOptionType.String,
+                name: 'label',
+                description: 'The short label of the campaign, preferably one or two words. Used to create role and channel names.',
+                required: true
+            },
+            {
+                type: ApplicationCommandOptionType.String,
+                name: 'color',
+                description: `The hex color code to use for the campaign's roles`
+            },
+            {
+                type: ApplicationCommandOptionType.String,
+                name: 'category',
+                description: `Optional name or id of an existing category to create this campaign under`
+            }
+        ]
     }
 ];
 

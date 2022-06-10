@@ -1,7 +1,6 @@
 import { Client, Intents } from 'discord.js';
 import { token, developerContactId, allowedRolesOrUsers, database } from './config.js';
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
-import { countcampaigns } from './commands/countcampaigns.js';
 import { Sequelize } from 'sequelize';
 import { User } from './models/user.js';
 import { Campaign } from './models/campaign.js';
@@ -23,7 +22,7 @@ client.once('ready', async () => {
 client.login(token);
 
 const commands = {
-    createcampaign, countcampaigns
+    createcampaign
 };
 
 const buttons = {

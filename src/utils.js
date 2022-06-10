@@ -1,36 +1,6 @@
 import { Permissions } from 'discord.js';
 import { ChannelTypes } from 'discord.js/src/util/Constants.js';
 
-export function getOptionsFromCommand(interaction) {
-    const dm = interaction.options.getMember('dm');
-    const title = interaction.options.getString('title');
-    const label = interaction.options.getString('label');
-    const transformedLabel = transformLabel(label);
-    let color = interaction.options.getString('color');
-    if (color && !color.startsWith('#')) {
-        color = '#' + color;
-    }
-    if (!color || !/^#[0-9A-Fa-f]{6}$/i.test(color)) {
-        color = '#FFFFFF';
-    }
-    return { dm, title, label, transformedLabel, color };
-}
-
-export async function getOptionsFromMessage(interaction) {
-
-    const { guild } = interaction;
-
-    const split = interaction.message.content.split('`');
-    const title = split[1];
-    const label = split[3].replace('@', '');
-    const transformedLabel = transformLabel(label);
-    const color = split[5];
-    const dm = await getMember(guild, interaction.message.content.match(/<@[!]?([^>]+)>/)[1]);
-    console.log('got dm?', typeof dm);
-
-    return { dm, title, label, transformedLabel, color };
-}
-
 export async function getMember(guild, memberId) {
     console.log('looking for member matching', memberId);
     let member = guild.members.cache.find(m => m.id === memberId);
@@ -132,6 +102,10 @@ export async function overwritePermissionsProgressively(channel, permissionOverw
     }
 }
 
-function transformLabel(label) {
-    return label.toLowerCase().replace(/\ /g, '-');
+export function getCategoryByNameOrId(guild, nameOrId) {
+    return guild.channels.cache
+        .find(channel =>
+            channel.type === 'GUILD_CATEGORY' &&
+            [channel.id.toLowerCase(), channel.name.toLowerCase()].includes(nameOrId.toLowerCase())
+        );
 }

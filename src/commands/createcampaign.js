@@ -1,17 +1,22 @@
 import { ChannelType, OverwriteType } from 'discord-api-types/v9';
 import { MessageActionRow, MessageButton } from 'discord.js';
 import { channels, roleEmojiName, roles } from '../config.js';
-import { findOrCreateChannel, findOrCreateRole, getOptionsFromCommand, getOptionsFromMessage, normalizePermissionOverwrites, overwritePermissionsProgressively } from '../utils.js';
+import { findOrCreateChannel, findOrCreateRole, normalizePermissionOverwrites, overwritePermissionsProgressively, getCategoryByNameOrId, getMember } from '../utils.js';
 
-export async function createcampaign(interaction) {
+export async function createcampaign(interaction, oneshot=false) {
 
-    const { dm, title, label, transformedLabel, color } = getOptionsFromCommand(interaction);
+    const { guild } = interaction;
+    let { dm, title, label, transformedLabel, category, color } = getOptionsFromCommand(interaction);
+    if (category) {
+        category = getCategoryByNameOrId(guild, category);
+        console.log('got category', category.name);
+    }
 
-    console.log(`Creating a campaign titled ${title} with the label "${label}" for DM ${dm} and with color ${color}`);
+    console.log(`Creating a campaign titled ${title} with the label "${label}" for DM ${dm}${category ? ` in the category ${category.name}` : ''} and with color ${color}`);
 
     interaction.reply({
         ephemeral: true,
-        content: `You're about to create the campaign \`${title}\`, with the role \`@${label}\` with the color \`${color}\`, for the DM ${dm}, with channels that look like \`#${transformedLabel}-chat\`. Are you sure you want to continue?`,
+        content: `You're about to create the campaign \`${title}\`, with the role \`@${label}\` with the color \`${color}\`, for the DM ${dm}${category ? `, in the category \`${category.name}\`` : ''}, with channels that look like \`#${transformedLabel}-chat\`. Are you sure you want to continue?`,
         components: [
             new MessageActionRow()
                 .addComponents(
@@ -29,7 +34,12 @@ export async function confirmcreatecampaign(interaction) {
     const channelDefinitions = JSON.parse(JSON.stringify(channels));
 
     const { guild } = interaction;
-    const { dm, title, label, transformedLabel, color } = await getOptionsFromMessage(interaction);
+    let { dm, title, label, transformedLabel, color, category, oneshot } = await getOptionsFromMessage(interaction);
+    if (category) {
+        console.log('getting category', category);
+        category = getCategoryByNameOrId(guild, category);
+        console.log('got category', category.name);
+    }
 
     interaction.deferReply({ephemeral: true});
 
@@ -70,12 +80,14 @@ export async function confirmcreatecampaign(interaction) {
         }
     }
 
-    const category = await findOrCreateChannel(guild, {
-        name: title,
-        type: ChannelType.GuildCategory
-    });
+    if (!category) {
+        category = await findOrCreateChannel(guild, {
+            name: title,
+            type: ChannelType.GuildCategory
+        });
+        console.log('no category provided, retrieved', category.name);
+    }
 
-    console.trace('why is this not being caught?');
     await overwritePermissionsProgressively(
         category,
         normalizePermissionOverwrites(channelDefinitions.category.permissionOverwrites, overwriteOptions)
@@ -123,4 +135,42 @@ export async function confirmcreatecampaign(interaction) {
         ephemeral: true,
         content: `:tada: Woot! A new campaign! Check out <#${createdChannels[0].id}>`
     });
+}
+
+function getOptionsFromCommand(interaction) {
+    const dm = interaction.options.getMember('dm');
+    const title = interaction.options.getString('title');
+    const label = interaction.options.getString('label');
+    const transformedLabel = transformLabel(label);
+    const category = interaction.options.getString('category');
+    let color = interaction.options.getString('color');
+    if (color && !color.startsWith('#')) {
+        color = '#' + color;
+    }
+    if (!color || !/^#[0-9A-Fa-f]{6}$/i.test(color)) {
+        color = '#FFFFFF';
+    }
+    return { dm, title, label, transformedLabel, color, category };
+}
+
+async function getOptionsFromMessage(interaction) {
+
+    const { guild } = interaction;
+
+    const split = interaction.message.content.split('`');
+    const title = split[1];
+    const label = split[3].replace('@', '');
+    const transformedLabel = transformLabel(label);
+    const color = split[5];
+    const category = split.length > 10 ? split[7] : null;
+    const dm = await getMember(guild, interaction.message.content.match(/<@[!]?([^>]+)>/)[1]);
+
+    console.log(split);
+    console.log({color, category})
+
+    return { dm, title, label, transformedLabel, color, category };
+}
+
+function transformLabel(label) {
+    return label.toLowerCase().replace(/\ /g, '-');
 }
