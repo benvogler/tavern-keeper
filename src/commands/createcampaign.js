@@ -1,9 +1,10 @@
 import { ChannelType, OverwriteType } from 'discord-api-types/v9';
 import { MessageActionRow, MessageButton } from 'discord.js';
-import { channels, roleEmojiName, roles } from '../config.js';
 import { findOrCreateChannel, findOrCreateRole, normalizePermissionOverwrites, overwritePermissionsProgressively, getCategoryByNameOrId, getMember } from '../utils.js';
+import { commandOptions } from '../config.js';
+const config = commandOptions.createcampaign;
 
-export async function createcampaign(interaction, oneshot=false) {
+export async function createcampaign(interaction) {
 
     const { guild } = interaction;
     let { dm, title, label, transformedLabel, category, color } = getOptionsFromCommand(interaction);
@@ -31,7 +32,7 @@ export async function createcampaign(interaction, oneshot=false) {
 
 export async function confirmcreatecampaign(interaction) {
 
-    const channelDefinitions = JSON.parse(JSON.stringify(channels));
+    const channelDefinitions = JSON.parse(JSON.stringify(config.channels));
 
     const { guild } = interaction;
     let { dm, title, label, transformedLabel, color, category, oneshot } = await getOptionsFromMessage(interaction);
@@ -43,7 +44,7 @@ export async function confirmcreatecampaign(interaction) {
 
     interaction.deferReply({ephemeral: true});
 
-    const roleEmoji = guild.emojis.cache.find(emoji => emoji.name === roleEmojiName);
+    const roleEmoji = guild.emojis.cache.find(emoji => emoji.name === config.roleEmojiName);
 
     const campaignRole = await findOrCreateRole(guild, {
         name: label,
@@ -51,7 +52,7 @@ export async function confirmcreatecampaign(interaction) {
         icon: roleEmoji
     });
 
-    const dmRole = await guild.roles.fetch(roles.dm);
+    const dmRole = await guild.roles.fetch(config.roles.dm);
 
     if (dmRole && dm.roles) {
         await dm.roles.add(dmRole);
@@ -59,7 +60,7 @@ export async function confirmcreatecampaign(interaction) {
         console.log('assigned roles to dm');
     }
 
-    const annexRole = await guild.roles.fetch(roles.annex);
+    const annexRole = await guild.roles.fetch(config.roles.annex);
 
     const overwriteOptions = {
         everyone: {
@@ -164,9 +165,6 @@ async function getOptionsFromMessage(interaction) {
     const color = split[5];
     const category = split.length > 10 ? split[7] : null;
     const dm = await getMember(guild, interaction.message.content.match(/<@[!]?([^>]+)>/)[1]);
-
-    console.log(split);
-    console.log({color, category})
 
     return { dm, title, label, transformedLabel, color, category };
 }

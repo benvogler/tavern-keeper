@@ -1,6 +1,7 @@
 import { Client, Intents } from 'discord.js';
-import { token, developerContactId, allowedRolesOrUsers, database } from './config.js';
+import { token, developerContactId, commandOptions, database } from './config.js';
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
+import { createoneshot, confirmcreateoneshot } from './commands/createoneshot.js';
 import { Sequelize } from 'sequelize';
 import { User } from './models/user.js';
 import { Campaign } from './models/campaign.js';
@@ -22,11 +23,13 @@ client.once('ready', async () => {
 client.login(token);
 
 const commands = {
-    createcampaign
+    createcampaign,
+    createoneshot
 };
 
 const buttons = {
-    confirmcreatecampaign
+    confirmcreatecampaign,
+    confirmcreateoneshot
 };
 
 const models = {
@@ -52,8 +55,8 @@ async function handleInteraction(interaction) {
                 return;
             }
             const roleIds = interaction.member.roles.cache.map(role => role.id);
-            if (!allowedRolesOrUsers.includes(interaction.member.id) &&
-                !allowedRolesOrUsers.some(item => roleIds.includes(item))) {
+            if (!commandOptions[commandName].allowedRolesOrUsers.includes(interaction.member.id) &&
+                !commandOptions[commandName].allowedRolesOrUsers.some(item => roleIds.includes(item))) {
                 return await interaction.reply({
                     ephemeral: true,
                     content: `Sorry, you don't have access to do that.`
