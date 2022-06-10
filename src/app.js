@@ -1,12 +1,23 @@
 import { Client, Intents } from 'discord.js';
-import { token, developerContactId, allowedRolesOrUsers } from './config.js';
+import { token, developerContactId, allowedRolesOrUsers, database } from './config.js';
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
 import { countcampaigns } from './commands/countcampaigns.js';
+import { Sequelize } from 'sequelize';
+import { User } from './models/user.js';
+import { Campaign } from './models/campaign.js';
+import { CampaignMember } from './models/campaignmember.js';
 
 const client = new Client({intents: new Intents().add([Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS])});
+const sequelize = new Sequelize(`postgres://${database.user}:${database.password}@${database.url}:${database.port}/${database.name}`);
 
-client.once('ready', () => {
-    console.log('Bot started successfully');
+client.once('ready', async () => {
+    try {
+        await sequelize.authenticate();
+        await sequelize.sync({force: true});
+        console.log('Bot started successfully');
+    } catch (error) {
+        console.error('Failed to connect to database', error);
+    }
 });
 
 client.login(token);
@@ -18,6 +29,16 @@ const commands = {
 const buttons = {
     confirmcreatecampaign
 };
+
+const models = {
+    Campaign: Campaign(sequelize),
+    User: User(sequelize),
+    CampaignMember: CampaignMember(sequelize)
+};
+
+models.Campaign.hasOne(models.User, {foreignKey: 'dm'});
+models.Campaign.belongsToMany(models.User, {through: models.CampaignMember});
+models.User.belongsToMany(models.Campaign, {through: models.CampaignMember});
 
 // Used when running via CLI
 client.on('interactionCreate', async interaction => {
