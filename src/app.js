@@ -3,8 +3,9 @@ import { token, developerContactId, allowedRolesOrUsers, database } from './conf
 import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
 import { countcampaigns } from './commands/countcampaigns.js';
 import { Sequelize } from 'sequelize';
-import { Campaign } from './models/campaign.js';
 import { User } from './models/user.js';
+import { Campaign } from './models/campaign.js';
+import { CampaignMember } from './models/campaignmember.js';
 
 const client = new Client({intents: new Intents().add([Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS])});
 const sequelize = new Sequelize(`postgres://${database.user}:${database.password}@${database.url}:${database.port}/${database.name}`);
@@ -31,12 +32,13 @@ const buttons = {
 
 const models = {
     Campaign: Campaign(sequelize),
-    User: User(sequelize)
+    User: User(sequelize),
+    CampaignMember: CampaignMember(sequelize)
 };
 
 models.Campaign.hasOne(models.User, {foreignKey: 'dm'});
-models.Campaign.belongsToMany(models.User, {through: 'CampaignMembers'});
-models.User.belongsToMany(models.Campaign, {through: 'CampaignMembers'});
+models.Campaign.belongsToMany(models.User, {through: models.CampaignMember});
+models.User.belongsToMany(models.Campaign, {through: models.CampaignMember});
 
 // Used when running via CLI
 client.on('interactionCreate', async interaction => {
