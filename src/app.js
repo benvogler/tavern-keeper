@@ -1,7 +1,7 @@
 import { Client, Intents } from 'discord.js';
-import { token, developerContactId, commandOptions, database } from './config.js';
-import { createcampaign, confirmcreatecampaign } from './commands/createcampaign.js';
-import { createoneshot, confirmcreateoneshot } from './commands/createoneshot.js';
+import { token, developerContactId, database } from './config.js';
+import { CreateCampaign, ConfirmCreateCampaign } from './commands/createcampaign.js';
+import { CreateOneshot, ConfirmCreateOneshot } from './commands/createoneshot.js';
 import { Sequelize } from 'sequelize';
 import { User } from './models/user.js';
 import { Campaign } from './models/campaign.js';
@@ -22,15 +22,15 @@ client.once('ready', async () => {
 
 client.login(token);
 
-const commands = {
-    createcampaign,
-    createoneshot
-};
+const commands = [
+    CreateCampaign,
+    CreateOneshot
+];
 
-const buttons = {
-    confirmcreatecampaign,
-    confirmcreateoneshot
-};
+const buttons = [
+    ConfirmCreateCampaign,
+    ConfirmCreateOneshot
+];
 
 const models = {
     Campaign: Campaign(sequelize),
@@ -49,30 +49,36 @@ client.on('interactionCreate', async interaction => {
 
 async function handleInteraction(interaction) {
     try {
-        if (interaction.isCommand()) {
-            const { commandName } = interaction;
-            if (!Object.keys(commands).includes(commandName)) {
+        if (interaction.isCommand() || interaction.isButton()) {
+            let array;
+            let name;
+            if (interaction.isCommand()) {
+                array = commands;
+                name = interaction.commandName;
+            }
+            if (interaction.isButton()) {
+                array = buttons;
+                name = interaction.customId;
+            }
+            const commandClass = array.find(item => item.definition.name === name);
+            if (!commandClass) {
                 return;
             }
-            const roleIds = interaction.member.roles.cache.map(role => role.id);
-            if (!commandOptions[commandName].allowedRolesOrUsers.includes(interaction.member.id) &&
-                !commandOptions[commandName].allowedRolesOrUsers.some(item => roleIds.includes(item))) {
-                return await interaction.reply({
-                    ephemeral: true,
-                    content: `Sorry, you don't have access to do that.`
-                });
+            try {
+                const command = new commandClass(interaction, client);
+                await command.execute();
+            } catch (error) {
+                if (error.name === 'CommandAuthorzationError') {
+                    return await this.interaction.reply({
+                        ephemeral: true,
+                        content: error.message
+                    });
+                } else {
+                    throw(error);
+                }
             }
-            return await commands[commandName](interaction, client);
-        }
-        if (interaction.isButton()) {
-            const { customId } = interaction;
-            if (!Object.keys(buttons).includes(customId)) {
-                return;
-            }
-            return await buttons[customId](interaction, client);
         }
     } catch (error) {
-        console.error('Failed to create campaign fully', error);
         const content = `Something went wrong! Send this info to <@${developerContactId}>:\n\`\`\`${error.stack}\`\`\``;
         try {
             await interaction.reply({
