@@ -96,4 +96,5 @@ async function handleCommand(interaction) {
         } else {
             throw(error);
         }
+    }
 }
