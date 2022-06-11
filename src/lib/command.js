@@ -21,10 +21,20 @@ export class Command {
         this.options = this.parseCommandOptions();
     }
 
+
+    /**
+     * Check the user's permissions and if they're allowed to, run the command using the given interaction
+     * @abstract
+     * @throws {CommandAuthorizationError}
+     */
+    async run() {
+        await this.checkPermission();
+        await this.execute();
+    }
+
     /**
      * Execute the command using the given interaction
      * @abstract
-     * @throws {CommandAuthorizationError}
      */
     async execute() {
         throw new Error('must be implemented by subclass');
@@ -35,7 +45,7 @@ export class Command {
      * @abstract
      * @return {Boolean}
      */
-    checkPermission() {
+    async checkPermission() {
         if (this.allowedRolesOrUsers) {
             const roleIds = this.interaction.member.roles.cache.map(role => role.id);
             if (!this.allowedRolesOrUsers.includes(this.interaction.member.id) &&
